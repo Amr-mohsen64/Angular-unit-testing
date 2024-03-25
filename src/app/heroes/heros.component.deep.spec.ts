@@ -4,7 +4,25 @@ import { of } from 'rxjs';
 import { HeroService } from '../hero.service';
 import { HeroesComponent } from './heroes.component';
 import { HeroComponent } from '../hero/hero.component';
-import { NO_ERRORS_SCHEMA } from '@angular/core';
+import {
+  Directive,
+  HostListener,
+  Input,
+  NO_ERRORS_SCHEMA,
+} from '@angular/core';
+
+@Directive({
+  selector: '[routerLink]',
+  host: { '(click)': 'onClick()' },
+})
+export class RouterLinkDirectiveStub {
+  @Input('routerLink') linkParams: any;
+  navigateTo: any = null;
+
+  onClick() {
+    this.navigateTo = this.linkParams;
+  }
+}
 
 // in deep tests we test the relation between the component (heros) and its child components(hero)
 describe('HeroesComponent (deep tests)', () => {
@@ -26,9 +44,9 @@ describe('HeroesComponent (deep tests)', () => {
     ]);
 
     TestBed.configureTestingModule({
-      declarations: [HeroesComponent, HeroComponent],
+      declarations: [HeroesComponent, HeroComponent, RouterLinkDirectiveStub],
       providers: [{ provide: HeroService, useValue: mockHeroService }],
-      schemas: [NO_ERRORS_SCHEMA],
+      // schemas: [NO_ERRORS_SCHEMA],
     });
     fixture = TestBed.createComponent(HeroesComponent);
     mockHeroService.getHeroes.and.returnValue(of(HEROES));
@@ -36,9 +54,6 @@ describe('HeroesComponent (deep tests)', () => {
   });
 
   it('should render each hero as a HeroComponent', () => {
-    mockHeroService.getHeroes.and.returnValue(of(HEROES));
-    fixture.detectChanges(); // run ngOnInit
-
     const heroComponentDEs = fixture.debugElement.queryAll(
       By.directive(HeroComponent)
     );
@@ -50,8 +65,6 @@ describe('HeroesComponent (deep tests)', () => {
 
   it(`should call heroService.deleteHero when the Hero Component's delete button is clicked`, () => {
     spyOn(fixture.componentInstance, 'delete');
-    mockHeroService.getHeroes.and.returnValue(of(HEROES));
-    fixture.detectChanges(); // run ngOnInit
 
     const heroComponents = fixture.debugElement.queryAll(
       By.directive(HeroComponent)
@@ -71,9 +84,6 @@ describe('HeroesComponent (deep tests)', () => {
   });
 
   it('should add a new hero to the hero list when the add button is clicked', () => {
-    mockHeroService.getHeroes.and.returnValue(of(HEROES));
-    fixture.detectChanges(); // run ngOnInit
-
     const name = 'Mr. Ice';
     mockHeroService.addHero.and.returnValue(of({ id: 5, name, strength: 4 }));
 
@@ -90,5 +100,19 @@ describe('HeroesComponent (deep tests)', () => {
     const heroText = fixture.debugElement.query(By.css('ul')).nativeElement
       .textContent;
     expect(heroText).toContain('Ice');
+  });
+
+  it('should have the correct route for the first hero', () => {
+    const heroComponents = fixture.debugElement.queryAll(
+      By.directive(HeroComponent)
+    );
+
+    const routerLink = heroComponents[0]
+      .query(By.directive(RouterLinkDirectiveStub))
+      .injector.get(RouterLinkDirectiveStub);
+
+    heroComponents[0].query(By.css('a')).triggerEventHandler('click', null);
+
+    expect(routerLink.navigateTo).toBe('/detail/1');
   });
 });
